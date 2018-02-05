@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Connekt</string>
+    <string name="base_url">https://dummytests.000webhostapp.com/connekt/</string>
+</resources>
