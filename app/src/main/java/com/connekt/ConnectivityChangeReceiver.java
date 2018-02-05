@@ -41,13 +41,13 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
         final ConnectivityManager connMgr = (ConnectivityManager) context
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
 
-        final android.net.NetworkInfo wifi = connMgr
-                .getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+       /* final android.net.NetworkInfo wifi = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_WIFI);*/
 
         final android.net.NetworkInfo mobile = connMgr
                 .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
 
-        if (wifi.isConnected()) {
+        /*if (wifi.isConnected()) {
             connectionType = "Wifi";
             if (firstConnect) {
                 firstConnect = false;
@@ -55,7 +55,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 updateViewOnConnectivityStatus(true, context);
                 Log.e("network_______", "connected");
             }
-        } else if (mobile.isConnected()) {
+        } else */
+        if (mobile.isConnected()) {
             connectionType = "Mobile data";
             if (firstConnect) {
                 // do subroutines here
