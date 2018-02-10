@@ -143,7 +143,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     @SuppressLint({"MissingPermission", "HardwareIds"})
     public String getDeviceIMEI(Context context) {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        if (new MainActivity().isPermissionGranted()) {
+        if (MainActivity.getInstance().isPermissionGranted()) {
             return telephonyManager.getDeviceId();
         } else {
             return "";
