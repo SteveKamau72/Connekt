@@ -13,9 +13,12 @@ import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+
+import javax.net.ssl.SSLContext;
 
 /**
  * <p>
@@ -84,10 +87,24 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     }
 
     /**
+     * Initialize SSL
+     *
+     * @param mContext
+     */
+    public static void initializeSSLContext(Context mContext) {
+        try {
+            SSLContext.getInstance("TLSv1.2");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * Making the request using loopj AsyncHttpClient.
      * Requires @params: imei_code, active_time, last_active_time, type
      **/
     private void networkRequest(Context context) {
+        initializeSSLContext(context);
         final String url = context.getResources().getString(R.string.base_url) + "connected.php";
         final int DEFAULT_TIMEOUT = 20 * 10000;
         AsyncHttpClient client = new AsyncHttpClient();
