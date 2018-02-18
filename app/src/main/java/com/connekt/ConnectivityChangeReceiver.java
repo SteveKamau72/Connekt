@@ -11,8 +11,10 @@ import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.loopj.android.http.MySSLSocketFactory;
 import com.loopj.android.http.RequestParams;
 
+import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -109,6 +111,15 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
         final int DEFAULT_TIMEOUT = 20 * 10000;
         AsyncHttpClient client = new AsyncHttpClient();
         client.setTimeout(DEFAULT_TIMEOUT);
+        try {
+            KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            trustStore.load(null, null);
+            TLSSocketFactory sf = new TLSSocketFactory(trustStore);
+            sf.setHostnameVerifier(MySSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+            client.setSSLSocketFactory(sf);
+        } catch (Exception e) {
+            Log.e("ssl__error", e.getMessage());
+        }
         final RequestParams params = new RequestParams();
         params.put("imei_code", getDeviceIMEI(context));
         params.put("active_time", getCurrentTime());
