@@ -9,16 +9,17 @@ import android.net.ConnectivityManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.AsyncHttpResponseHandler;
-import com.loopj.android.http.MySSLSocketFactory;
-import com.loopj.android.http.RequestParams;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 
-import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 
@@ -33,6 +34,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     String connectionType;
     private static boolean firstConnect = true;
     SharedPreferences sharedPreferences;
+    // Tag used to cancel the request
+    String tag_string_req = "string_req";
 
     /**
      * This method is called when the BroadcastReceiver is receiving an Intent broadcast.
@@ -105,45 +108,36 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
      * Making the request using loopj AsyncHttpClient.
      * Requires @params: imei_code, active_time, last_active_time, type
      **/
-    private void networkRequest(Context context) {
-        initializeSSLContext(context);
+    private void networkRequest(final Context context) {
         final String url = context.getResources().getString(R.string.base_url) + "connected.php";
-        final int DEFAULT_TIMEOUT = 20 * 10000;
-        AsyncHttpClient client = new AsyncHttpClient();
-        client.setTimeout(DEFAULT_TIMEOUT);
-        try {
-            KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            trustStore.load(null, null);
-            TLSSocketFactory sf = new TLSSocketFactory(trustStore);
-            sf.setHostnameVerifier(MySSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-            client.setSSLSocketFactory(sf);
-        } catch (Exception e) {
-            Log.e("ssl__error", e.getMessage());
-        }
-        final RequestParams params = new RequestParams();
-        params.put("imei_code", getDeviceIMEI(context));
-        params.put("active_time", getCurrentTime());
-        params.put("last_active_time", getLastActiveTime());
-        params.put("type", connectionType);
-
-        client.get(url, params, new AsyncHttpResponseHandler() {
+        StringRequest strReq = new StringRequest(Request.Method.GET,
+                url, new Response.Listener<String>() {
             @Override
-
-            public void onStart() {
-                Log.e("sync__", params.toString());
+            public void onResponse(String response) {
+                Log.e("sync__", response);
             }
+        }, new Response.ErrorListener() {
 
             @Override
-            public void onSuccess(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody) {
-                String s = new String(responseBody);
-                Log.e("sync__", s);
+            public void onErrorResponse(VolleyError error) {
+                Log.e("sync__", error.toString());
+
             }
+        }) {
 
             @Override
-            public void onFailure(int statusCode, cz.msebera.android.httpclient.Header[] headers, byte[] responseBody, Throwable error) {
-                Log.e("sync__", error.getMessage());
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("imei_code", getDeviceIMEI(context));
+                params.put("active_time", getCurrentTime());
+                params.put("last_active_time", getLastActiveTime());
+                params.put("type", connectionType);
+
+                return params;
             }
-        });
+        };
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
     /**
