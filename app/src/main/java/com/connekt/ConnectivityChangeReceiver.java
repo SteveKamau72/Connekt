@@ -121,6 +121,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
             @Override
             public void onErrorResponse(VolleyError error) {
                 Log.e("sync__", error.toString());
+                networkRequest(context);
 
             }
         }) {
