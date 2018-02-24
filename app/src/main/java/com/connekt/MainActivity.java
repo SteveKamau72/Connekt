@@ -18,7 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
-    TextView tvStatus;
+    TextView tvStatus, tvVersion;
     ImageView imgStatus;
     RelativeLayout rootLayout;
     private static MainActivity mainActivityRunningInstance;
@@ -63,8 +63,10 @@ public class MainActivity extends AppCompatActivity {
      **/
     private void initViews() {
         tvStatus = findViewById(R.id.status);
+        tvVersion = findViewById(R.id.version);
         imgStatus = findViewById(R.id.img_status);
         rootLayout = findViewById(R.id.root_layout);
+        tvVersion.setText("V.1");
     }
 
     /**
