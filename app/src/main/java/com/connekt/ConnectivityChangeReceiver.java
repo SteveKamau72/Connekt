@@ -108,6 +108,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
      * Making the request using volley.
      * Requires @params: imei_code, active_time, last_active_time, type
      **/
+
     private void networkRequest(final Context context) {
         final String url = context.getResources().getString(R.string.base_url) + "connected.php";
         StringRequest strReq = new StringRequest(Request.Method.POST,
@@ -164,8 +165,12 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     @SuppressLint({"MissingPermission", "HardwareIds"})
     public String getDeviceIMEI(Context context) {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        if (MainActivity.getInstance().isPermissionGranted()) {
-            return telephonyManager.getDeviceId();
+        if (MainActivity.getInstance() != null) {
+            if (MainActivity.getInstance().isPermissionGranted()) {
+                return telephonyManager.getDeviceId();
+            } else {
+                return "";
+            }
         } else {
             return "";
         }
