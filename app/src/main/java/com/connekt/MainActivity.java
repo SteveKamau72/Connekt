@@ -74,18 +74,18 @@ public class MainActivity extends AppCompatActivity {
      * Protection level: dangerous
      **/
     public boolean isPermissionGranted() {
-        if (Build.VERSION.SDK_INT >= 23) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
             if (checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE)
                     == PackageManager.PERMISSION_GRANTED) {
-                Log.v("TAG", "Permission is granted");
+                Log.e("TAG", "Permission is granted");
                 return true;
             } else {
-                Log.v("TAG", "Permission is revoked");
+                Log.e("TAG", "Permission is revoked");
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, 1);
                 return false;
             }
         } else { //permission is automatically granted on sdk<23 upon installation
-            Log.v("TAG", "Permission is granted");
+            Log.e("TAG", "Permission is granted");
             return true;
         }
     }
