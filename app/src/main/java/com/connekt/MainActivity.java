@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         tvVersion = findViewById(R.id.version);
         imgStatus = findViewById(R.id.img_status);
         rootLayout = findViewById(R.id.root_layout);
-        tvVersion.setText("V.1");
+        tvVersion.setText("V.2");
     }
 
     /**
@@ -116,6 +116,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onStop() {
+        super.onStop();
+        mainActivityRunningInstance = this;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mainActivityRunningInstance = this;
+    }
     /**
      * Update UI when network changes
      **/

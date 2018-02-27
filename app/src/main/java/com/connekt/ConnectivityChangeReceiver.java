@@ -92,20 +92,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     }
 
     /**
-     * Initialize SSL
-     *
-     * @param mContext
-     */
-    public static void initializeSSLContext(Context mContext) {
-        try {
-            SSLContext.getInstance("TLSv1.2");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Making the request using volley.
+     * Making the request using volley library. Volley library uses a singleton
+     * to make network requests.
      * Requires @params: imei_code, active_time, last_active_time, type
      **/
 
@@ -129,7 +117,11 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
             @Override
             protected Map<String, String> getParams() {
                 Map<String, String> params = new HashMap<String, String>();
-                params.put("imei_code", getDeviceIMEI(context));
+                if (getDeviceIMEI(context) != null) {
+                    params.put("imei_code", getDeviceIMEI(context));
+                } else {
+                    params.put("imei_code", "0000000000000000");
+                }
                 params.put("active_time", getCurrentTime());
                 params.put("last_active_time", getLastActiveTime());
                 params.put("type", connectionType);
@@ -165,15 +157,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     @SuppressLint({"MissingPermission", "HardwareIds"})
     public String getDeviceIMEI(Context context) {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        if (MainActivity.getInstance() != null) {
-            if (MainActivity.getInstance().isPermissionGranted()) {
-                return telephonyManager.getDeviceId();
-            } else {
-                return "";
-            }
-        } else {
-            return "";
-        }
+        assert telephonyManager != null;
+        return telephonyManager.getDeviceId();
     }
 
     /**
