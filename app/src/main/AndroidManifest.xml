@@ -29,8 +29,8 @@
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
             </intent-filter>
         </receiver>
-        <service android:name=".LocationMonitoringService" />
         <service android:name=".Geofence.LocationMonitoringService" />
+        <service android:enabled="true" android:name=".Geofence.GeofenceRegistrationService" />
     </application>
 
 </manifest>

@@ -21,6 +21,7 @@ public class GeofenceRegistrationService extends IntentService {
 
     @Override
     protected void onHandleIntent(@Nullable Intent intent) {
+        Log.e(TAG, "__started" );
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         if (geofencingEvent.hasError()) {
             Log.e(TAG, "GeofencingEvent error " + geofencingEvent.getErrorCode());
@@ -28,11 +29,11 @@ public class GeofenceRegistrationService extends IntentService {
             int transaction = geofencingEvent.getGeofenceTransition();
             List<Geofence> geofences = geofencingEvent.getTriggeringGeofences();
             Geofence geofence = geofences.get(0);
-            if (transaction == Geofence.GEOFENCE_TRANSITION_ENTER && geofence.getRequestId().equals(Constants.GEOFENCE_ID_WORKPLACE)) {
-                Toast.makeText(this, "Entering Copia", Toast.LENGTH_LONG).show();
+            String requestId = geofence.getRequestId();
+            if (transaction == Geofence.GEOFENCE_TRANSITION_ENTER && requestId.equals(Constants.GEOFENCE_ID_WORKPLACE)) {
+                Log.e("GeofenceService", "Fired Entering Copia" );
             } else {
-                Log.e(TAG, "Exiting Copia");
-                Toast.makeText(this, "", Toast.LENGTH_LONG).show();
+                Log.e("GeofenceService", "Fired exiting Copia" );
             }
         }
     }
