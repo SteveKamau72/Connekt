@@ -1,4 +1,4 @@
-package com.connekt;
+package com.smartwatch;
 
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
@@ -14,14 +14,11 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-
-import javax.net.ssl.SSLContext;
 
 /**
  * <p>
@@ -31,8 +28,8 @@ import javax.net.ssl.SSLContext;
  */
 
 public class ConnectivityChangeReceiver extends BroadcastReceiver {
-    String connectionType;
     private static boolean firstConnect = true;
+    String connectionType;
     SharedPreferences sharedPreferences;
     // Tag used to cancel the request
     String tag_string_req = "string_req";
@@ -156,7 +153,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
      **/
     @SuppressLint({"MissingPermission", "HardwareIds"})
     public String getDeviceIMEI(Context context) {
-        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context
+                .TELEPHONY_SERVICE);
         assert telephonyManager != null;
         return telephonyManager.getDeviceId();
     }
@@ -165,7 +163,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
      * Method to return the current date time using SimpleDateFormat
      **/
     public String getCurrentTime() {
-        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());//dd/MM/yyyy
+        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault
+                ());//dd/MM/yyyy
         Date now = new Date();
         return sdfDate.format(now);
     }

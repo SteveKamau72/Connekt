@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Connekt</string>
+    <string name="app_name">SmartWatch</string>
     <!--<string name="base_url">https://dummytests.000webhostapp.com/connekt/</string>-->
     <string name="base_url">https://kotech.000webhostapp.com/connekt/</string>
 </resources>

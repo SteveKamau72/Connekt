@@ -1,4 +1,4 @@
-package com.connekt;
+package com.smartwatch;
 
 import android.Manifest;
 import android.content.Context;

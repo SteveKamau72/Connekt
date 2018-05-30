@@ -1,4 +1,4 @@
-package com.connekt;
+package com.smartwatch;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
