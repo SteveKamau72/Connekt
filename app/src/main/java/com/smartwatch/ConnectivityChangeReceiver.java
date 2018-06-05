@@ -29,18 +29,23 @@ import java.util.Map;
 
 public class ConnectivityChangeReceiver extends BroadcastReceiver {
     private static boolean firstConnect = true;
-    String connectionType;
     SharedPreferences sharedPreferences;
     // Tag used to cancel the request
     String tag_string_req = "string_req";
+    Context context;
 
     /**
      * This method is called when the BroadcastReceiver is receiving an Intent broadcast.
      **/
     @Override
     public void onReceive(final Context context, final Intent intent) {
+        this.context = context;
         //initialize SharedPreferences for persistence of data
         sharedPreferences = context.getSharedPreferences("ACCOUNT", context.MODE_PRIVATE);
+
+        //Start location sharing service to app server.........
+        Intent startServiceIntent = new Intent(context, LocationMonitoringService.class);
+        context.startService(startServiceIntent);
 
         //check for network connectivity
         final ConnectivityManager connMgr = (ConnectivityManager) context
@@ -53,35 +58,53 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
 
         if (wifi.isConnected()) {
-            connectionType = "Wifi";
+            Constants.connectionType = "Wifi";
             if (firstConnect) {
                 firstConnect = false;
-                networkRequest(context);
-                updateViewOnConnectivityStatus(true, context);
+                updateViewOnConnectivityStatus(true);
                 Log.e("network_______", "connected");
             }
         } else if (mobile.isConnected()) {
-            connectionType = "Mobile data";
+            Constants.connectionType = "Mobile data";
             if (firstConnect) {
                 // do subroutines here
                 firstConnect = false;
-                networkRequest(context);
-                updateViewOnConnectivityStatus(true, context);
+                updateViewOnConnectivityStatus(true);
                 Log.e("network_______", "connected");
             }
         } else {
+            Constants.connectionType = "";
             firstConnect = true;
             Log.e("network_______", "disconnected");
-            saveOfflineDateToPreferences();
-            updateViewOnConnectivityStatus(false, context);
+            updateViewOnConnectivityStatus(false);
+        }
+        Log.e("WORKPLACE", String.valueOf(Constants.isWorkPlace) + "/" + Constants.connectionType);
+        if (Constants.isWorkPlace) {
+            startNetworkRequestCommands();
         }
 
+    }
+
+    public void startNetworkRequestCommands() {
+        if (Constants.connectionType.equalsIgnoreCase("Wifi")) {
+            updateViewOnConnectivityStatus(true);
+            Log.e("network_______1", "connected");
+            networkRequest();
+        } else if (Constants.connectionType.equalsIgnoreCase("Mobile data")) {
+            updateViewOnConnectivityStatus(true);
+            networkRequest();
+            Log.e("network_______2", "connected");
+        } else {
+            Log.e("network_______3", "disconnected");
+            updateViewOnConnectivityStatus(false);
+            saveOfflineDateToPreferences();
+        }
     }
 
     /**
      * Update UI when network changes
      **/
-    private void updateViewOnConnectivityStatus(final boolean isConnected, Context context) {
+    private void updateViewOnConnectivityStatus(final boolean isConnected) {
         if (MainActivity.getInstance() != null) {//only if view is visible
             MainActivity.getInstance().updateView(isConnected);
         }
@@ -94,7 +117,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
      * Requires @params: imei_code, active_time, last_active_time, type
      **/
 
-    private void networkRequest(final Context context) {
+    private void networkRequest() {
         final String url = context.getResources().getString(R.string.base_url) + "connected.php";
         StringRequest strReq = new StringRequest(Request.Method.POST,
                 url, new Response.Listener<String>() {
@@ -107,7 +130,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
             @Override
             public void onErrorResponse(VolleyError error) {
                 Log.e("sync__", error.toString());
-                networkRequest(context);
+                networkRequest();
             }
         }) {
 
@@ -121,7 +144,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 }
                 params.put("active_time", getCurrentTime());
                 params.put("last_active_time", getLastActiveTime());
-                params.put("type", connectionType);
+                params.put("type", Constants.connectionType);
 
                 return params;
             }

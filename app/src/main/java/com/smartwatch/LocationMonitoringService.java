@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -30,15 +31,16 @@ import org.greenrobot.eventbus.EventBus;
 public class LocationMonitoringService extends Service implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
-
-    public static final String ACTION_LOCATION_BROADCAST = LocationMonitoringService.class
-            .getName() + "LocationBroadcast";
     private static final String TAG = LocationMonitoringService.class.getSimpleName();
     GoogleApiClient mLocationClient;
     LocationRequest mLocationRequest = new LocationRequest();
+    SharedPreferences sharedPreferences;
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        sharedPreferences = getSharedPreferences("DATA", MODE_PRIVATE);
+
         buildGoogleClient();
 
         mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
@@ -65,6 +67,9 @@ public class LocationMonitoringService extends Service implements
                 .addOnConnectionFailedListener(this)
                 .addApi(LocationServices.API)
                 .build();
+        if (!mLocationClient.isConnected()) {
+            showNotification("Turn On Your Location", "Go to Settings > Location");
+        }
     }
 
     @Nullable
@@ -123,9 +128,35 @@ public class LocationMonitoringService extends Service implements
             Log.e(TAG, "== location != null" + location.getLatitude());
             Constants.location = location;
             EventBus.getDefault().post(new EventBusInterface(mLocationClient));
-            showNotification("LocationChanged", location.getLatitude() + "" + location
-                    .getLongitude());
+            calculateDistanceFromLastLocation(location);
+            //new ConnectivityChangeReceiver().startNetworkRequestCommands();
         }
+    }
+
+    private void calculateDistanceFromLastLocation(Location location) {
+
+        double latitude = Double.parseDouble(sharedPreferences.getString("latitude", "0"));
+        double longitude = Double.parseDouble(sharedPreferences.getString("longitude", "0"));
+        float distance = 0;
+        Location savedLocation = new Location("saved_location");
+        savedLocation.setLatitude(latitude);
+        savedLocation.setLongitude(longitude);
+
+        Location newLocation = new Location("new_location");
+        newLocation.setLatitude(location.getLatitude());
+        newLocation.setLongitude(location.getLongitude());
+
+
+        distance = (float) Math.round(savedLocation.distanceTo(newLocation));//in meters
+        if (distance > 50) {
+            Constants.isWorkPlace = false;
+            showNotification("Location Changed", "Current Distance " + distance + " M from Work" +
+                    " Place");
+        } else {
+            Constants.isWorkPlace = true;
+            showNotification("Location Changed", "Currently at Work Place");
+        }
+
     }
 
     @Override
@@ -151,4 +182,5 @@ public class LocationMonitoringService extends Service implements
 
         notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
     }
+
 }

@@ -30,7 +30,6 @@
             </intent-filter>
         </receiver>
         <service android:name=".LocationMonitoringService" />
-        <service android:name=".GeoFenceService" />
     </application>
 
 </manifest>

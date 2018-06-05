@@ -1,15 +1,14 @@
 package com.smartwatch;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.ProgressDialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.IntentSender;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
@@ -39,8 +38,6 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
-import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
@@ -67,32 +64,6 @@ public class MainActivity extends AppCompatActivity {
     RelativeLayout rootLayout;
     ProgressDialog dialog;
     Button btnSetLocation;
-    private boolean mAlreadyStartedService = false;
-    private BroadcastReceiver Receiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            try {
-                if (intent.getAction().equals("GeoFence")) {
-                    boolean enter = intent.getBooleanExtra("Enter", false);
-                    boolean exit = intent.getBooleanExtra("Exit", false);
-                    if (enter) {
-                        // Toast.makeText(context, "Entered in your location", Toast
-                        // .LENGTH_SHORT).show();
-                        showNotification("ENTERED LOCATION", "entering LOCATION");
-                        //showCircle();
-                    } else if (exit) {
-                        showNotification("EXIT", "Leaving from your location");
-                        Toast.makeText(context, "Leaving from your location", Toast.LENGTH_SHORT)
-                                .show();
-                        //circle.remove();
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-    };
 
     public static MainActivity getInstance() {
         return mainActivityRunningInstance;
@@ -128,7 +99,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //Request user for required permissions
-        isPermissionGranted();
+        if (!isPermissionGranted()) {
+            requestPermissions();
+        }
         //build google api client
         //buildGoogleApiClient();
 
@@ -150,8 +123,12 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Log.e("LOCATION__", Constants.location.getLatitude() + ", " + Constants.location
                         .getLongitude());
-                registerReceiver(Receiver, new IntentFilter("GeoFence"));
-                startGeoFenceMonitoring();
+                // TODO: 6/4/18 set to preferences
+                SharedPreferences sharedPreferences = getSharedPreferences("DATA", MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString("latitude", String.valueOf(Constants.location.getLatitude()));
+                editor.putString("longitude", String.valueOf(Constants.location.getLongitude()));
+                editor.apply();
             }
         });
     }
@@ -166,6 +143,10 @@ public class MainActivity extends AppCompatActivity {
      **/
     public boolean isPermissionGranted() {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+            Log.e("TAG", "State:" + checkSelfPermission(android.Manifest.permission
+                    .READ_PHONE_STATE) + " = " +
+                    PackageManager.PERMISSION_GRANTED);
+
             if (checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) ==
                     PackageManager.PERMISSION_GRANTED) {
                 Log.e("TAG", "Permission is granted");
@@ -173,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.e("TAG", "Permission is revoked");
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission
+                        .READ_PHONE_STATE, Manifest.permission
                         .READ_PHONE_STATE, Manifest.permission.ACCESS_FINE_LOCATION, Manifest
                         .permission.ACCESS_COARSE_LOCATION}, 1);
                 return false;
@@ -209,7 +191,6 @@ public class MainActivity extends AppCompatActivity {
         if (!gps_enabled && !network_enabled) {
             //showSettingDialog();
         }
-        EventBus.getDefault().register(this);
     }
 
     @Override
@@ -226,8 +207,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void doThis(EventBusInterface googleClient) {
-        Toast.makeText(this, "Client Started", Toast.LENGTH_SHORT).show();
+    public void getGoogleClient(EventBusInterface googleClient) {
         googleApiClient = googleClient.getGoogleClient();
         dialog.dismiss();
     }
@@ -267,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
             //Passing null to indicate that it is executing for the first time.
             if (checkPermissions()) { //Yes permissions are granted by the user. Go to the next
                 // step.
-                startStep3();
+                startStep2();
             } else {  //No user has not granted the permissions yet. Request now.
                 requestPermissions();
             }
@@ -282,19 +262,11 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Step 3: Start the Location Monitor Service
      */
-    private void startStep3() {
+    private void startStep2() {
 
         //And it will be keep running until you close the entire application from task manager.
         //This method will executed only once.
 
-        if (!mAlreadyStartedService) {
-            //Start location sharing service to app server.........
-            Intent intent = new Intent(this, LocationMonitoringService.class);
-            startService(intent);
-
-            mAlreadyStartedService = true;
-            //Ends................................................
-        }
     }
 
     /**
@@ -383,154 +355,50 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        Log.i("TAG", "onRequestPermissionResult");
-        if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE) {
-            if (grantResults.length <= 0) {
-                // If img_user interaction was interrupted, the permission request is cancelled
-                // and you
-                // receive empty arrays.
-                Log.i("TAG", "User interaction was cancelled.");
-            } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        Log.e("TAG", "onRequestPermissionResult");
+        if (grantResults.length <= 0) {
+            // If img_user interaction was interrupted, the permission request is cancelled
+            // and you
+            // receive empty arrays.
+            Log.e("TAG", "User interaction was cancelled.");
+        } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-                Log.i("TAG", "Permission granted, updates requested, starting location updates");
-                startStep3();
+            Log.e("TAG", "Permission granted, updates requested, starting location updates");
 
-            } else {
-                // Permission denied.
+            //Start location sharing service to app server.........
+            Intent startServiceIntent = new Intent(MainActivity.this, LocationMonitoringService
+                    .class);
+            startService(startServiceIntent);
 
-                // Notify the img_user via a SnackBar that they have rejected a core permission
-                // for the
-                // app, which makes the Activity useless. In a real app, core permissions would
-                // typically be best requested during a welcome-screen flow.
+        } else {
+            // Permission denied.
 
-                // Additionally, it is important to remember that a permission might have been
-                // rejected without asking the img_user for permission (device policy or "Never ask
-                // again" prompts). Therefore, a img_user interface affordance is typically
-                // implemented
-                // when permissions are denied. Otherwise, your app could appear unresponsive to
-                // touches or interactions which have required permissions.
-                showSnackbar(R.string.permission_denied_explanation,
-                        R.string.settings, new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                // Build intent that displays the App settings screen.
-                                Intent intent = new Intent();
-                                intent.setAction(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                Uri uri = Uri.fromParts("package",
-                                        BuildConfig.APPLICATION_ID, null);
-                                intent.setData(uri);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
-                            }
-                        });
-            }
-        }
-    }
+            // Notify the img_user via a SnackBar that they have rejected a core permission
+            // for the
+            // app, which makes the Activity useless. In a real app, core permissions would
+            // typically be best requested during a welcome-screen flow.
 
-    /* Show Location Access Dialog */
-    private void showSettingDialog() {
-        LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);//Setting priotity of
-        // Location request to high
-        locationRequest.setInterval(30 * 1000);
-        locationRequest.setFastestInterval(5 * 1000);//1 sec Time interval for location update
-        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-                .addLocationRequest(locationRequest);
-        builder.setAlwaysShow(true); //this is the key ingredient to show dialog always when GPS
-        // is off
-        PendingResult<LocationSettingsResult> result =
-                LocationServices.SettingsApi.checkLocationSettings(googleApiClient, builder.build
-                        ());
-        result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
-            @Override
-            public void onResult(LocationSettingsResult result) {
-                final Status status = result.getStatus();
-                final LocationSettingsStates state = result.getLocationSettingsStates();
-                switch (status.getStatusCode()) {
-                    case LocationSettingsStatusCodes.SUCCESS:
-                        // All location settings are satisfied. The client can initialize location
-                        startStep1();
-                        break;
-                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                        // Location settings are not satisfied. But could be fixed by showing the
-                        // user
-                        // a dialog.
-                        try {
-                            // Show the dialog by calling startResolutionForResult(),
-                            // and check the result in onActivityResult().
-                            status.startResolutionForResult(MainActivity.this,
-                                    REQUEST_CHECK_SETTINGS);
-                        } catch (IntentSender.SendIntentException e) {
-                            e.printStackTrace();
-                            // Ignore the error.
-                        }
-                        break;
-                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                        // Location settings are not satisfied. However, we have no way to fix the
-                        // settings so we won't show the dialog.
-                        break;
-                }
-            }
-        });
-    }
-
-    private void startGeoFenceMonitoring() {
-        try {
-
-            Geofence geofence = new Geofence.Builder()
-                    .setRequestId("1234")
-                    //.setCircularRegion(Constants.location.getLatitude(), Constants.location
-                    //.getLongitude(),
-                    .setCircularRegion(48.848016, 2.346888, 200) //
-                    // first
-                    // lat,then
-                    // lng,then radius
-                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                    .setNotificationResponsiveness(1000)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence
-                            .GEOFENCE_TRANSITION_EXIT)
-                    .build();
-
-            GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
-                    .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                    .addGeofence(geofence).build();
-
-
-            Intent intent = new Intent(this, GeoFenceService.class);
-            PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent
-                    .FLAG_UPDATE_CURRENT);
-
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission
-                    .ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
-                Log.e("PERMISSIONS", "FAILED");
-                return;
-            }
-            LocationServices.GeofencingApi.addGeofences(googleApiClient,
-                    geofencingRequest, pendingIntent)
-                    .setResultCallback(new ResultCallback<Status>() {
+            // Additionally, it is important to remember that a permission might have been
+            // rejected without asking the img_user for permission (device policy or "Never ask
+            // again" prompts). Therefore, a img_user interface affordance is typically
+            // implemented
+            // when permissions are denied. Otherwise, your app could appear unresponsive to
+            // touches or interactions which have required permissions.
+            showSnackbar(R.string.permission_denied_explanation,
+                    R.string.settings, new View.OnClickListener() {
                         @Override
-                        public void onResult(@NonNull Status status) {
-                            if (status.isSuccess()) {
-                                showNotification("Start", "Trip start for your desired " +
-                                        "location");
-                                Log.e(TAG, "added geofence successfully: ");
-                            } else {
-                                Log.e(TAG, "failed to add geofence: ");
-                            }
+                        public void onClick(View view) {
+                            // Build intent that displays the App settings screen.
+                            Intent intent = new Intent();
+                            intent.setAction(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package",
+                                    BuildConfig.APPLICATION_ID, null);
+                            intent.setData(uri);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
                         }
                     });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.e("Exception", e.getMessage());
         }
     }
 
