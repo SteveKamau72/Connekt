@@ -45,6 +45,7 @@ public class LocationMonitoringService extends Service implements
 
         mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
         mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
+        //minimum distance between updates.
         mLocationRequest.setSmallestDisplacement(0.1f);
 
 
@@ -100,7 +101,8 @@ public class LocationMonitoringService extends Service implements
             return;
         }
         if (mLocationClient.isConnected()) {
-            //MainActivity.getInstance().googleClientConnected(mLocationClient);
+            //set event bus to register events when location client is connected
+            //request updates of location
             EventBus.getDefault().post(new EventBusInterface(mLocationClient));
             LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient,
                     mLocationRequest, this);
@@ -129,24 +131,28 @@ public class LocationMonitoringService extends Service implements
             Constants.location = location;
             EventBus.getDefault().post(new EventBusInterface(mLocationClient));
             calculateDistanceFromLastLocation(location);
-            //new ConnectivityChangeReceiver().startNetworkRequestCommands();
         }
     }
 
+    /*
+     * Calculate the distance between the current location and the
+     * location client set as work place
+     */
     private void calculateDistanceFromLastLocation(Location location) {
 
         double latitude = Double.parseDouble(sharedPreferences.getString("latitude", "0"));
         double longitude = Double.parseDouble(sharedPreferences.getString("longitude", "0"));
         float distance = 0;
+        //saved location
         Location savedLocation = new Location("saved_location");
         savedLocation.setLatitude(latitude);
         savedLocation.setLongitude(longitude);
-
+        //new location the client is at
         Location newLocation = new Location("new_location");
         newLocation.setLatitude(location.getLatitude());
         newLocation.setLongitude(location.getLongitude());
 
-
+        //distance in meters between the two points. Assume 50m is out of range of a work place.
         distance = (float) Math.round(savedLocation.distanceTo(newLocation));//in meters
         if (distance > 50) {
             Constants.isWorkPlace = false;
@@ -165,6 +171,9 @@ public class LocationMonitoringService extends Service implements
 
     }
 
+    /*
+    * Show notification by building up the notification manager
+    */
     private void showNotification(final String title, final String subject) {
         NotificationCompat.BigTextStyle bigText = new NotificationCompat.BigTextStyle();
         bigText.bigText(subject);

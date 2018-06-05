@@ -1,13 +1,9 @@
 package com.smartwatch;
 
 import android.Manifest;
-import android.app.Activity;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
@@ -20,7 +16,6 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -35,15 +30,6 @@ import android.widget.Toast;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.PendingResult;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResult;
-import com.google.android.gms.location.LocationSettingsStates;
-import com.google.android.gms.location.LocationSettingsStatusCodes;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -123,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Log.e("LOCATION__", Constants.location.getLatitude() + ", " + Constants.location
                         .getLongitude());
-                // TODO: 6/4/18 set to preferences
+                //set current work location
                 SharedPreferences sharedPreferences = getSharedPreferences("DATA", MODE_PRIVATE);
                 SharedPreferences.Editor editor = sharedPreferences.edit();
                 editor.putString("latitude", String.valueOf(Constants.location.getLatitude()));
@@ -148,20 +134,22 @@ public class MainActivity extends AppCompatActivity {
                     PackageManager.PERMISSION_GRANTED);
 
             if (checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) ==
+                    PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest
+                    .permission.ACCESS_FINE_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED) {
                 Log.e("TAG", "Permission is granted");
                 return true;
             } else {
                 Log.e("TAG", "Permission is revoked");
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission
-                        .READ_PHONE_STATE, Manifest.permission
-                        .READ_PHONE_STATE, Manifest.permission.ACCESS_FINE_LOCATION, Manifest
-                        .permission.ACCESS_COARSE_LOCATION}, 1);
+                requestPermissions();
                 return false;
             }
         } else { //permission is automatically granted on sdk<23 upon installation
             Log.e("TAG", "Permission is granted");
-            startStep1();
+            if (!isGooglePlayServicesAvailable()) {
+                Toast.makeText(getApplicationContext(), "No Google Services installed",
+                        Toast.LENGTH_LONG).show();
+            }
             return true;
         }
     }
@@ -230,44 +218,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        startStep1();
+        //Check whether this user has installed Google play service which is being used by
+        // Location updates.
+        if (!isGooglePlayServicesAvailable()) {
+            Toast.makeText(getApplicationContext(), "No Google Services installed",
+                    Toast.LENGTH_LONG).show();
+        }
         if (!EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().register(this);
         }
     }
 
-    /**
-     * Step 1: Check Google Play services
-     */
-    private void startStep1() {
-        //Check whether this user has installed Google play service which is being used by
-        // Location updates.
-        if (isGooglePlayServicesAvailable()) {
-
-            //Passing null to indicate that it is executing for the first time.
-            if (checkPermissions()) { //Yes permissions are granted by the user. Go to the next
-                // step.
-                startStep2();
-            } else {  //No user has not granted the permissions yet. Request now.
-                requestPermissions();
-            }
-
-
-        } else {
-            Toast.makeText(getApplicationContext(), "No Google Services installed",
-                    Toast.LENGTH_LONG).show();
-        }
-    }
-
-    /**
-     * Step 3: Start the Location Monitor Service
-     */
-    private void startStep2() {
-
-        //And it will be keep running until you close the entire application from task manager.
-        //This method will executed only once.
-
-    }
 
     /**
      * Return the availability of GooglePlayServices
@@ -285,21 +246,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Return the current state of the permissions needed.
-     */
-    private boolean checkPermissions() {
-        int permissionState1 = ActivityCompat.checkSelfPermission(this,
-                android.Manifest.permission.ACCESS_FINE_LOCATION);
-
-        int permissionState2 = ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_COARSE_LOCATION);
-
-        return permissionState1 == PackageManager.PERMISSION_GRANTED && permissionState2 ==
-                PackageManager.PERMISSION_GRANTED;
-
-    }
-
-    /**
      * Start permissions requests.
      */
     private void requestPermissions() {
@@ -312,11 +258,15 @@ public class MainActivity extends AppCompatActivity {
                 ActivityCompat.shouldShowRequestPermissionRationale(this,
                         Manifest.permission.ACCESS_COARSE_LOCATION);
 
+        boolean shouldProvideRationale3 =
+                ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.READ_PHONE_STATE);
+
 
         // Provide an additional rationale to the img_user. This would happen if the img_user
         // denied the
         // request previously, but didn't check the "Don't ask again" checkbox.
-        if (shouldProvideRationale || shouldProvideRationale2) {
+        if (shouldProvideRationale || shouldProvideRationale2 || shouldProvideRationale3) {
             showSnackbar(R.string.permission_rationale,
                     android.R.string.ok, new View.OnClickListener() {
                         @Override
@@ -400,23 +350,5 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
         }
-    }
-
-    private void showNotification(final String title, final String subject) {
-        NotificationCompat.BigTextStyle bigText = new NotificationCompat.BigTextStyle();
-        bigText.bigText(subject);
-        bigText.setBigContentTitle(title);
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
-                .setContentTitle(title)
-                .setContentText(subject)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setStyle(bigText);
-
-        NotificationManager notificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-        notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
     }
 }
