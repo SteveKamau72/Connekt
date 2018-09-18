@@ -1,42 +1,61 @@
 package com.smartwatch;
 
 import android.Manifest;
+import android.app.AppOpsManager;
 import android.app.ProgressDialog;
+import android.app.usage.NetworkStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.smartwatch.model.Package;
+import com.smartwatch.utils.Constants;
+import com.smartwatch.utils.EventBusInterface;
+import com.smartwatch.utils.NetworkStatsHelper;
+import com.smartwatch.utils.OnPackageClickListener;
+import com.smartwatch.view.PackageAdapter;
+import com.smartwatch.view.StatsActivity;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+public class MainActivity extends AppCompatActivity implements OnPackageClickListener {
     /**
      * Code used in requesting runtime permissions.
      **/
@@ -45,16 +64,31 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static MainActivity mainActivityRunningInstance;
     protected GoogleApiClient googleApiClient;
+    RecyclerView recyclerView;
     TextView tvStatus, tvVersion;
     ImageView imgStatus;
-    RelativeLayout rootLayout;
+    LinearLayout rootLayout;
     ProgressDialog dialog;
     Button btnSetLocation;
+    ProgressBar progressBar;
 
     public static MainActivity getInstance() {
         return mainActivityRunningInstance;
     }
 
+    public static int getPackageUid(Context context, String packageName) {
+        PackageManager packageManager = context.getPackageManager();
+        int uid = -1;
+        try {
+            PackageInfo packageInfo = packageManager.getPackageInfo(packageName, PackageManager
+                    .GET_META_DATA);
+            uid = packageInfo.applicationInfo.uid;
+        } catch (PackageManager.NameNotFoundException ignored) {
+        }
+        return uid;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,9 +122,43 @@ public class MainActivity extends AppCompatActivity {
         if (!isPermissionGranted()) {
             requestPermissions();
         }
-        //build google api client
-        //buildGoogleApiClient();
+        //if MODE is default (MODE_DEFAULT), extra permission checking is needed
+        boolean granted = false;
+        AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
+        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), getPackageName());
 
+        if (mode == AppOpsManager.MODE_DEFAULT) {
+            granted = (checkCallingOrSelfPermission(android.Manifest.permission
+                    .PACKAGE_USAGE_STATS) == PackageManager.PERMISSION_GRANTED);
+        } else {
+            granted = (mode == AppOpsManager.MODE_ALLOWED);
+        }
+
+        if (granted) {
+            AsyncTask.execute(new Runnable() {
+                List<Package> packageList = new ArrayList<>();
+
+                @Override
+                public void run() {
+                    //code you want to run on the background
+                    packageList = getPackagesData();
+                    //the code you want to run on main thread
+                    MainActivity.this.runOnUiThread(new Runnable() {
+
+                        public void run() {
+                            Collections.sort(packageList);
+                            progressBar.setVisibility(View.GONE);
+                            recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+                            recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity
+                                    .this));
+                            recyclerView.setAdapter(new PackageAdapter(packageList, MainActivity
+                                    .this));
+                        }
+                    });
+                }
+            });
+        }
     }
 
     /**
@@ -102,6 +170,7 @@ public class MainActivity extends AppCompatActivity {
         imgStatus = findViewById(R.id.img_status);
         rootLayout = findViewById(R.id.root_layout);
         btnSetLocation = findViewById(R.id.location_btn);
+        progressBar = findViewById(R.id.loading_spinner);
         tvVersion.setText("V.2");
 
         btnSetLocation.setOnClickListener(new View.OnClickListener() {
@@ -229,7 +298,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     /**
      * Return the availability of GooglePlayServices
      */
@@ -350,5 +418,69 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
         }
+    }
+
+    private List<Package> getPackagesData() {
+        PackageManager packageManager = getPackageManager();
+        List<PackageInfo> packageInfoList = packageManager.getInstalledPackages(PackageManager
+                .GET_META_DATA);
+        List<Package> packageList = new ArrayList<>(packageInfoList.size());
+        for (PackageInfo packageInfo : packageInfoList) {
+            Package packageItem = new Package();
+            packageItem.setVersion(packageInfo.versionName);
+            packageItem.setPackageName(packageInfo.packageName);
+            packageList.add(packageItem);
+            ApplicationInfo ai = null;
+            try {
+                ai = packageManager.getApplicationInfo(packageInfo.packageName, PackageManager
+                        .GET_META_DATA);
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+            if (ai == null) {
+                continue;
+            }
+            CharSequence appName = packageManager.getApplicationLabel(ai);
+            if (appName != null) {
+                packageItem.setName(appName.toString());
+            }
+            int uid = getPackageUid(this, packageItem.getPackageName());
+            //packageItem.setUid(uid);
+
+            NetworkStatsManager networkStatsManager = (NetworkStatsManager) getSystemService
+                    (Context.NETWORK_STATS_SERVICE);
+            NetworkStatsHelper networkStatsHelper = new NetworkStatsHelper(networkStatsManager,
+                    uid);
+
+            long dataWifiRx = networkStatsHelper.getPackageRxBytesWifi();
+            long dataMobileRx = networkStatsHelper.getPackageRxBytesMobile();
+            long dataWifiTx = networkStatsHelper.getPackageTxBytesWifi();
+            long dataMobileTx = networkStatsHelper.getPackageTxBytesMobile();
+            dataWifiRx = dataWifiRx / 1024;
+            //dataWifiRx = dataWifiRx / 1024;
+            dataWifiTx = dataWifiTx / 1024;
+            //dataWifiTx = dataWifiTx / 1024;
+            dataMobileRx = dataMobileRx / 1024;
+            //dataMobileRx = dataMobileRx / 1024;
+            dataMobileTx = dataMobileTx / 1024;
+            //dataMobileTx = dataMobileTx / 1024;
+
+
+            packageItem.setWifiData(dataWifiRx + dataWifiTx);
+            packageItem.setMobileData(dataMobileTx + dataMobileRx);
+            //long dataMobileRx = networkStatsHelper.getPackageRxBytesMobile(holder.context);
+            //long dataMobileTx = networkStatsHelper.getPackageTxBytesMobile(holder.context,
+            //MONTH_MILLIS);
+            Log.e("package__name", packageItem.getPackageName() + " " + dataWifiRx + "/" +
+                    dataWifiTx);
+        }
+        return packageList;
+    }
+
+    @Override
+    public void onClick(Package packageItem) {
+        Intent intent = new Intent(getApplicationContext(), StatsActivity.class);
+        intent.putExtra(StatsActivity.EXTRA_PACKAGE, packageItem.getPackageName());
+        startActivity(intent);
     }
 }

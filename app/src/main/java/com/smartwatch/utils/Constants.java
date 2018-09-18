@@ -1,4 +1,4 @@
-package com.smartwatch;
+package com.smartwatch.utils;
 
 
 import android.location.Location;

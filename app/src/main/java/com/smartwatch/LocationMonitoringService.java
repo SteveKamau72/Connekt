@@ -21,6 +21,8 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.smartwatch.utils.Constants;
+import com.smartwatch.utils.EventBusInterface;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -69,6 +71,7 @@ public class LocationMonitoringService extends Service implements
                 .addApi(LocationServices.API)
                 .build();
         if (!mLocationClient.isConnected()) {
+            mLocationClient.connect();
             showNotification("Turn On Your Location", "Go to Settings > Location");
         }
     }
