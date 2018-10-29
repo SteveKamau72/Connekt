@@ -1,20 +1,16 @@
 package com.smartwatch;
 
 import android.Manifest;
-import android.app.AppOpsManager;
 import android.app.ProgressDialog;
-import android.app.usage.NetworkStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -23,7 +19,6 @@ import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
@@ -39,23 +34,14 @@ import android.widget.Toast;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.smartwatch.model.Package;
 import com.smartwatch.utils.Constants;
 import com.smartwatch.utils.EventBusInterface;
-import com.smartwatch.utils.NetworkStatsHelper;
-import com.smartwatch.utils.OnPackageClickListener;
-import com.smartwatch.view.PackageAdapter;
-import com.smartwatch.view.StatsActivity;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-public class MainActivity extends AppCompatActivity implements OnPackageClickListener {
+public class MainActivity extends AppCompatActivity {
     /**
      * Code used in requesting runtime permissions.
      **/
@@ -122,43 +108,6 @@ public class MainActivity extends AppCompatActivity implements OnPackageClickLis
         if (!isPermissionGranted()) {
             requestPermissions();
         }
-        //if MODE is default (MODE_DEFAULT), extra permission checking is needed
-        boolean granted = false;
-        AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
-        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(), getPackageName());
-
-        if (mode == AppOpsManager.MODE_DEFAULT) {
-            granted = (checkCallingOrSelfPermission(android.Manifest.permission
-                    .PACKAGE_USAGE_STATS) == PackageManager.PERMISSION_GRANTED);
-        } else {
-            granted = (mode == AppOpsManager.MODE_ALLOWED);
-        }
-
-        if (granted) {
-            AsyncTask.execute(new Runnable() {
-                List<Package> packageList = new ArrayList<>();
-
-                @Override
-                public void run() {
-                    //code you want to run on the background
-                    packageList = getPackagesData();
-                    //the code you want to run on main thread
-                    MainActivity.this.runOnUiThread(new Runnable() {
-
-                        public void run() {
-                            Collections.sort(packageList);
-                            progressBar.setVisibility(View.GONE);
-                            recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-                            recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity
-                                    .this));
-                            recyclerView.setAdapter(new PackageAdapter(packageList, MainActivity
-                                    .this));
-                        }
-                    });
-                }
-            });
-        }
     }
 
     /**
@@ -170,7 +119,6 @@ public class MainActivity extends AppCompatActivity implements OnPackageClickLis
         imgStatus = findViewById(R.id.img_status);
         rootLayout = findViewById(R.id.root_layout);
         btnSetLocation = findViewById(R.id.location_btn);
-        progressBar = findViewById(R.id.loading_spinner);
         tvVersion.setText("V.2");
 
         btnSetLocation.setOnClickListener(new View.OnClickListener() {
@@ -420,7 +368,7 @@ public class MainActivity extends AppCompatActivity implements OnPackageClickLis
         }
     }
 
-    private List<Package> getPackagesData() {
+/*    private List<Package> getPackagesData() {
         PackageManager packageManager = getPackageManager();
         List<PackageInfo> packageInfoList = packageManager.getInstalledPackages(PackageManager
                 .GET_META_DATA);
@@ -482,5 +430,5 @@ public class MainActivity extends AppCompatActivity implements OnPackageClickLis
         Intent intent = new Intent(getApplicationContext(), StatsActivity.class);
         intent.putExtra(StatsActivity.EXTRA_PACKAGE, packageItem.getPackageName());
         startActivity(intent);
-    }
+    }*/
 }

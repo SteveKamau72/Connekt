@@ -8,7 +8,7 @@
     <LinearLayout
         android:id="@+id/root_layout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:background="@color/colorPrimary"
         android:orientation="vertical"
         android:padding="10dp">
@@ -60,23 +60,5 @@
         android:text="Hello World!"
         android:textColor="@color/white"
         android:textSize="10sp" />
-
-    <android.support.v7.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/recycler_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@+id/root_layout"
-        android:background="@color/white"
-        app:layoutManager="LinearLayoutManager" />
-
-    <ProgressBar
-        android:id="@+id/loading_spinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:layout_gravity="center"
-        android:indeterminateTint="@color/colorPrimary"
-        android:indeterminateTintMode="src_atop" />
 
 </RelativeLayout>

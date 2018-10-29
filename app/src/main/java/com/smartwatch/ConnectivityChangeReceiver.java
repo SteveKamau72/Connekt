@@ -1,10 +1,13 @@
 package com.smartwatch;
 
 import android.annotation.SuppressLint;
+import android.app.AppOpsManager;
+import android.app.usage.NetworkStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -14,7 +17,9 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.smartwatch.utils.Constants;
+import com.smartwatch.utils.NetworkStatsHelper;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -32,12 +37,14 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     private static boolean firstConnect = true;
     SharedPreferences sharedPreferences;
     // Tag used to cancel the request
-    String tag_string_req = "string_req";
+    String tag_string_req = "string_req", dataUsed = "";
     Context context;
+    NetworkStatsHelper networkStatsHelper;
 
     /**
      * This method is called when the BroadcastReceiver is receiving an Intent broadcast.
      **/
+    @SuppressLint("DefaultLocale")
     @Override
     public void onReceive(final Context context, final Intent intent) {
         this.context = context;
@@ -58,12 +65,37 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
         final android.net.NetworkInfo mobile = connMgr
                 .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
 
+        //check for permissions to for tracking application operation
+        //if MODE is default (MODE_DEFAULT), extra permission checking is needed
+        boolean granted;
+        AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), context.getPackageName());
+
+        if (mode == AppOpsManager.MODE_DEFAULT) {
+            granted = (context.checkCallingOrSelfPermission(android.Manifest.permission
+                    .PACKAGE_USAGE_STATS) == PackageManager.PERMISSION_GRANTED);
+        } else {
+            granted = (mode == AppOpsManager.MODE_ALLOWED);
+        }
+        long dataInBytes = 0;
+        double dataInMBs = 0.0;
+        if (granted) {
+            NetworkStatsManager networkStatsManager = (NetworkStatsManager) context.getSystemService
+                    (Context.NETWORK_STATS_SERVICE);
+            networkStatsHelper = new NetworkStatsHelper(networkStatsManager,
+                    getLastActiveTimeInMillis());
+
+        }
+
         if (wifi.isConnected()) {
             Constants.connectionType = "Wifi";
             if (firstConnect) {
                 firstConnect = false;
                 updateViewOnConnectivityStatus(true);
                 Log.e("network_______", "connected");
+                dataInBytes = networkStatsHelper.getAllRxBytesWifi(context);
+
             }
         } else if (mobile.isConnected()) {
             Constants.connectionType = "Mobile data";
@@ -72,6 +104,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 firstConnect = false;
                 updateViewOnConnectivityStatus(true);
                 Log.e("network_______", "connected");
+                dataInBytes = networkStatsHelper.getAllRxBytesMobile(context);
             }
         } else {
             Constants.connectionType = "";
@@ -81,6 +114,11 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
         }
         Log.e("WORKPLACE", String.valueOf(Constants.isWorkPlace) + "/" + Constants.connectionType);
         if (Constants.isWorkPlace) {
+            dataInMBs = ((double) dataInBytes / 1000000);
+            dataUsed = String.format("%.2f",
+                    dataInMBs);
+            Log.e("track____", "long: " + dataInBytes + ", dec:" + String.format("%.2f",
+                    dataInMBs));
             startNetworkRequestCommands();
         }
 
@@ -100,6 +138,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
             updateViewOnConnectivityStatus(false);
             saveOfflineDateToPreferences();
         }
+
     }
 
     /**
@@ -137,7 +176,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
 
             @Override
             protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<String, String>();
+                Map<String, String> params = new HashMap<>();
                 if (getDeviceIMEI(context) != null) {
                     params.put("imei_code", getDeviceIMEI(context));
                 } else {
@@ -146,6 +185,7 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 params.put("active_time", getCurrentTime());
                 params.put("last_active_time", getLastActiveTime());
                 params.put("type", Constants.connectionType);
+                params.put("data_used", dataUsed);
 
                 return params;
             }
@@ -168,6 +208,23 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
      **/
     private String getLastActiveTime() {
         return sharedPreferences.getString("last_active_time", getCurrentTime());
+    }
+
+    /**
+     * Fetch last active time in millis from SharedPreferences
+     **/
+    private long getLastActiveTimeInMillis() {
+        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault
+                ());//dd/MM/yyyy
+        long timeInMilliseconds = 0;
+        try {
+            Date mDate = sdfDate.parse(getLastActiveTime());
+            timeInMilliseconds = mDate.getTime();
+            System.out.println("Date in milli :: " + timeInMilliseconds);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return timeInMilliseconds;
     }
 
 
