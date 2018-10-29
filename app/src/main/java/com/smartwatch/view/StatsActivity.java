@@ -146,52 +146,38 @@ public class StatsActivity extends AppCompatActivity {
     private void fillNetworkStatsAll(NetworkStatsHelper networkStatsHelper) {
         long mobileRx = networkStatsHelper.getAllRxBytesMobile(this);
         mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        networkStatsAllRx.setText(mobileRx + " Gb");
+        networkStatsAllRx.setText(mobileRx + " MB");
         long mobileTx = networkStatsHelper.getAllTxBytesMobile(this);
         mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        networkStatsAllTx.setText(mobileTx + " Gb");
+        networkStatsAllTx.setText(mobileTx + " MB");
     }
 
     @TargetApi(Build.VERSION_CODES.M)
     private void fillNetworkStatsPackage(int uid, NetworkStatsHelper networkStatsHelper) {
         long mobileRx = networkStatsHelper.getPackageRxBytesMobile();
         mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        networkStatsPackageRx.setText(mobileRx + " Gb");
+        networkStatsPackageRx.setText(mobileRx + " MB");
         long mobileTx = networkStatsHelper.getPackageTxBytesMobile();
         mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        networkStatsPackageTx.setText(mobileTx + " Gb");
+        networkStatsPackageTx.setText(mobileTx + " MB");
     }
 
     private void fillTrafficStatsAll() {
         long mobileRx = TrafficStatsHelper.getAllRxBytes();
         mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        networkStatsAllRx.setText(mobileRx + " Gb");
+        networkStatsAllRx.setText(mobileRx + " MB");
         long mobileTx = TrafficStatsHelper.getAllTxBytes();
         mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        networkStatsAllTx.setText(mobileTx + " Gb");
+        networkStatsAllTx.setText(mobileTx + " MB");
     }
 
     private void fillTrafficStatsPackage(int uid) {
         long mobileRx = TrafficStatsHelper.getPackageRxBytes(uid);
         mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        mobileRx=mobileRx/1024;
-        networkStatsPackageRx.setText(mobileRx + " Gb");
+        networkStatsPackageRx.setText(mobileRx + " MB");
         long mobileTx = TrafficStatsHelper.getPackageTxBytes(uid);
         mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        mobileTx=mobileTx/1024;
-        networkStatsPackageTx.setText(mobileTx + " Gb");
+        networkStatsPackageTx.setText(mobileTx + " MB");
     }
 
     private boolean hasPermissionToReadPhoneStats() {
