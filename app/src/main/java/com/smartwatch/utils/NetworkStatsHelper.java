@@ -15,109 +15,37 @@ import android.telephony.TelephonyManager;
 
 @TargetApi(Build.VERSION_CODES.M)
 public class NetworkStatsHelper {
-    private static long ACTIVE_TIME_MILLIS = 2629746000L;
     NetworkStatsManager networkStatsManager;
-    int packageUid;
 
     public NetworkStatsHelper(NetworkStatsManager networkStatsManager) {
         this.networkStatsManager = networkStatsManager;
     }
 
-    public NetworkStatsHelper(NetworkStatsManager networkStatsManager, int packageUid) {
-        this.networkStatsManager = networkStatsManager;
-        this.packageUid = packageUid;
-    }
-
-    public NetworkStatsHelper(NetworkStatsManager networkStatsManager, long
-            lastActiveTimeInMillis) {
-        this.networkStatsManager = networkStatsManager;
-        ACTIVE_TIME_MILLIS = lastActiveTimeInMillis;
-    }
-
-    public long getAllRxBytesMobile(Context context) {
+    public long getAllTxBytesMobile(Context context, long startTimeInMillis) {
         NetworkStats.Bucket bucket;
         try {
-            bucket = networkStatsManager.querySummaryForDevice(ConnectivityManager.TYPE_MOBILE,
+            bucket = networkStatsManager.querySummaryForUser(ConnectivityManager.TYPE_MOBILE,
                     getSubscriberId(context, ConnectivityManager.TYPE_MOBILE),
-                    0,
+                    startTimeInMillis,
                     System.currentTimeMillis());
         } catch (RemoteException e) {
             return -1;
         }
-        return bucket.getRxBytes();
+        return bucket.getTxBytes();
     }
 
-    public long getAllRxBytesWifi(Context context) {
+    public long getAllTxBytesWifi(Context context, long startTimeInMillis) {
         NetworkStats.Bucket bucket;
         try {
-            bucket = networkStatsManager.querySummaryForDevice(ConnectivityManager.TYPE_WIFI,
+            bucket = networkStatsManager.querySummaryForUser(ConnectivityManager.TYPE_WIFI,
                     getSubscriberId(context, ConnectivityManager.TYPE_WIFI),
-                    ACTIVE_TIME_MILLIS,
-                    System.currentTimeMillis());
-        } catch (RemoteException e) {
-            return -1;
-        }
-        return bucket.getRxBytes();
-    }
-
-    public long getAllTxBytesMobile(Context context) {
-        NetworkStats.Bucket bucket;
-        try {
-            bucket = networkStatsManager.querySummaryForDevice(ConnectivityManager.TYPE_MOBILE,
-                    getSubscriberId(context, ConnectivityManager.TYPE_MOBILE),
-                    0,
+                    startTimeInMillis,
                     System.currentTimeMillis());
         } catch (RemoteException e) {
             return -1;
         }
         return bucket.getTxBytes();
     }
-
-
-    public long getAllTxBytesWIFI(Context context) {
-        NetworkStats.Bucket bucket;
-        try {
-            bucket = networkStatsManager.querySummaryForDevice(ConnectivityManager.TYPE_WIFI,
-                    getSubscriberId(context, ConnectivityManager.TYPE_WIFI),
-                    0,
-                    System.currentTimeMillis());
-        } catch (RemoteException e) {
-            return -1;
-        }
-        return bucket.getTxBytes();
-    }
-
-
-    public long getPackageRxBytesMobile() {
-        NetworkStats networkStats;
-        long endTime = System.currentTimeMillis();
-        long startTime = endTime - ACTIVE_TIME_MILLIS;
-        networkStats = networkStatsManager.queryDetailsForUid(
-                ConnectivityManager.TYPE_MOBILE,
-                "",
-                startTime,
-                endTime,
-                packageUid);
-        NetworkStats.Bucket bucket = new NetworkStats.Bucket();
-        networkStats.getNextBucket(bucket);
-        return bucket.getRxBytes();
-    }
-
-    public long getPackageTxBytesMobile() {
-        NetworkStats networkStats;
-        long endTime = System.currentTimeMillis();
-        long startTime = endTime - ACTIVE_TIME_MILLIS;
-        networkStats = networkStatsManager.queryDetailsForUid(
-                ConnectivityManager.TYPE_MOBILE,
-                "",
-                startTime,
-                endTime,
-                packageUid);
-        NetworkStats.Bucket bucket = new NetworkStats.Bucket();
-        networkStats.getNextBucket(bucket);
-        return bucket.getTxBytes();
-    }
-
 
     private String getSubscriberId(Context context, int networkType) {
         if (ConnectivityManager.TYPE_MOBILE == networkType) {
@@ -138,36 +66,6 @@ public class NetworkStatsHelper {
             return tm.getSubscriberId();
         }
         return "";
-    }
-
-    public long getPackageRxBytesWifi() {
-        NetworkStats networkStats;
-        long endTime = System.currentTimeMillis();
-        long startTime = endTime - ACTIVE_TIME_MILLIS;
-        networkStats = networkStatsManager.queryDetailsForUid(
-                ConnectivityManager.TYPE_WIFI,
-                "",
-                startTime,
-                endTime,
-                packageUid);
-        NetworkStats.Bucket bucket = new NetworkStats.Bucket();
-        networkStats.getNextBucket(bucket);
-        return bucket.getRxBytes();
-    }
-
-    public long getPackageTxBytesWifi() {
-        NetworkStats networkStats;
-        long endTime = System.currentTimeMillis();
-        long startTime = endTime - ACTIVE_TIME_MILLIS;
-        networkStats = networkStatsManager.queryDetailsForUid(
-                ConnectivityManager.TYPE_WIFI,
-                "",
-                startTime,
-                endTime,
-                packageUid);
-        NetworkStats.Bucket bucket = new NetworkStats.Bucket();
-        networkStats.getNextBucket(bucket);
-        return bucket.getTxBytes();
     }
 
 }

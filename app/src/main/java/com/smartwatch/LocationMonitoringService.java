@@ -1,10 +1,7 @@
 package com.smartwatch;
 
 import android.Manifest;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -13,7 +10,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -23,6 +19,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.smartwatch.utils.Constants;
 import com.smartwatch.utils.EventBusInterface;
+import com.smartwatch.utils.NotifiationUtils;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -72,7 +69,8 @@ public class LocationMonitoringService extends Service implements
                 .build();
         if (!mLocationClient.isConnected()) {
             mLocationClient.connect();
-            showNotification("Turn On Your Location", "Go to Settings > Location");
+            NotifiationUtils.showNotification(getApplicationContext(), "Turn On Your Location",
+                    "Go to Settings > Location", 0);
         }
     }
 
@@ -159,11 +157,15 @@ public class LocationMonitoringService extends Service implements
         distance = (float) Math.round(savedLocation.distanceTo(newLocation));//in meters
         if (distance > 50) {
             Constants.isWorkPlace = false;
-            showNotification("Location Changed", "Current Distance " + distance + " M from Work" +
-                    " Place");
+            NotifiationUtils.showNotification(getApplicationContext(), "Location Changed",
+                    "Current Distance " + distance
+                            + " M from " +
+                            "Work" +
+                            " Place", 0);
         } else {
             Constants.isWorkPlace = true;
-            showNotification("Location Changed", "Currently at Work Place");
+            NotifiationUtils.showNotification(getApplicationContext(), "Location Changed",
+                    "Currently at Work Place", 0);
         }
 
     }
@@ -174,25 +176,5 @@ public class LocationMonitoringService extends Service implements
 
     }
 
-    /*
-    * Show notification by building up the notification manager
-    */
-    private void showNotification(final String title, final String subject) {
-        NotificationCompat.BigTextStyle bigText = new NotificationCompat.BigTextStyle();
-        bigText.bigText(subject);
-        bigText.setBigContentTitle(title);
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
-                .setContentTitle(title)
-                .setContentText(subject)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setPriority(Notification.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .setStyle(bigText);
-
-        NotificationManager notificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-        notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
-    }
 
 }

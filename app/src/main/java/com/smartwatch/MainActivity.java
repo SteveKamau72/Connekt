@@ -27,7 +27,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,12 +50,11 @@ public class MainActivity extends AppCompatActivity {
     private static MainActivity mainActivityRunningInstance;
     protected GoogleApiClient googleApiClient;
     RecyclerView recyclerView;
-    TextView tvStatus, tvVersion;
+    TextView tvStatus, tvVersion, tvDataLimit, tvDataStats;
     ImageView imgStatus;
     LinearLayout rootLayout;
     ProgressDialog dialog;
     Button btnSetLocation;
-    ProgressBar progressBar;
 
     public static MainActivity getInstance() {
         return mainActivityRunningInstance;
@@ -119,6 +117,8 @@ public class MainActivity extends AppCompatActivity {
         imgStatus = findViewById(R.id.img_status);
         rootLayout = findViewById(R.id.root_layout);
         btnSetLocation = findViewById(R.id.location_btn);
+        tvDataLimit = findViewById(R.id.data_limit);
+        tvDataStats = findViewById(R.id.data_usage);
         tvVersion.setText("V.2");
 
         btnSetLocation.setOnClickListener(new View.OnClickListener() {
@@ -134,6 +134,11 @@ public class MainActivity extends AppCompatActivity {
                 editor.apply();
             }
         });
+    }
+
+    public void setStats(String data_limit, String data_stats) {
+        tvDataLimit.setText("Data Limit: " + data_limit);
+        tvDataStats.setText("Data Usage: " + data_stats + "MBs");
     }
 
     /**

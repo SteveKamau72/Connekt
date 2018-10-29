@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.os.Handler;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -18,6 +19,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.smartwatch.utils.Constants;
 import com.smartwatch.utils.NetworkStatsHelper;
+import com.smartwatch.utils.NotifiationUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -40,6 +42,38 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     String tag_string_req = "string_req", dataUsed = "";
     Context context;
     NetworkStatsHelper networkStatsHelper;
+    long startTimeInMillis;
+    // Create the Handler
+    private Handler handler = new Handler();
+    // Define the code block to be executed
+    private Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            //check for data usage threshold
+            long runningDataStats = networkStatsHelper.getAllTxBytesMobile(context,
+                    startTimeInMillis)
+                    + networkStatsHelper.getAllTxBytesWifi(context, startTimeInMillis);
+            Double runningDataStatsInMBs = ((double) runningDataStats / 1000000);
+            int setDataLimit = sharedPreferences.getInt("data_limit", 0);
+
+            Log.e("monitoring____", runningDataStatsInMBs + "/" + setDataLimit);
+            // Repeat every 1 seconds
+            handler.postDelayed(runnable, 1000);
+            if (MainActivity.getInstance() != null) {//only if view is visible
+                MainActivity.getInstance().setStats(sharedPreferences.getInt
+                        ("data_limit", 0) + " MBs",String.format("%.2f",
+                        runningDataStatsInMBs));
+            }
+            if (runningDataStatsInMBs > setDataLimit) {
+                NotifiationUtils.showNotification(context, "Data Limit Warning!",
+                        "You have reached your data limit of " + sharedPreferences.getInt
+                                ("data_limit", 0) + " MBs", 1);
+                initiateNetworkRequest();
+                handler.removeCallbacks(runnable);
+            }
+
+        }
+    };
 
     /**
      * This method is called when the BroadcastReceiver is receiving an Intent broadcast.
@@ -80,11 +114,11 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
         }
         long dataInBytes = 0;
         double dataInMBs = 0.0;
+        startTimeInMillis = getStartTimeInMillis();
         if (granted) {
             NetworkStatsManager networkStatsManager = (NetworkStatsManager) context.getSystemService
                     (Context.NETWORK_STATS_SERVICE);
-            networkStatsHelper = new NetworkStatsHelper(networkStatsManager,
-                    getLastActiveTimeInMillis());
+            networkStatsHelper = new NetworkStatsHelper(networkStatsManager);
 
         }
 
@@ -94,7 +128,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 firstConnect = false;
                 updateViewOnConnectivityStatus(true);
                 Log.e("network_______", "connected");
-                dataInBytes = networkStatsHelper.getAllRxBytesWifi(context);
+                dataInBytes = networkStatsHelper.getAllTxBytesWifi(context,
+                        startTimeInMillis);
 
             }
         } else if (mobile.isConnected()) {
@@ -104,7 +139,8 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
                 firstConnect = false;
                 updateViewOnConnectivityStatus(true);
                 Log.e("network_______", "connected");
-                dataInBytes = networkStatsHelper.getAllRxBytesMobile(context);
+                dataInBytes = networkStatsHelper.getAllTxBytesMobile(context,
+                        startTimeInMillis);
             }
         } else {
             Constants.connectionType = "";
@@ -124,7 +160,21 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
 
     }
 
-    public void startNetworkRequestCommands() {
+    private long getStartTimeInMillis() {
+        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault
+                ());//dd/MM/yyyy
+        long timeInMilliseconds = 0;
+        try {
+            Date mDate = sdfDate.parse(getCurrentTime());
+            timeInMilliseconds = mDate.getTime();
+            System.out.println("Date in milli :: " + timeInMilliseconds);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return timeInMilliseconds;
+    }
+
+    private void initiateNetworkRequest() {
         if (Constants.connectionType.equalsIgnoreCase("Wifi")) {
             updateViewOnConnectivityStatus(true);
             Log.e("network_______1", "connected");
@@ -141,6 +191,10 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
 
     }
 
+    public void startNetworkRequestCommands() {
+        fetchDataLimitNetworkRequest();
+    }
+
     /**
      * Update UI when network changes
      **/
@@ -149,6 +203,31 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
             MainActivity.getInstance().updateView(isConnected);
         }
 
+    }
+
+    private void fetchDataLimitNetworkRequest() {
+        final String url = context.getResources().getString(R.string.base_url) + "data_limit.php";
+        StringRequest strReq = new StringRequest(Request.Method.GET,
+                url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.e("data_limit_", response);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putInt("data_limit", Integer.parseInt(response));
+                editor.apply();
+                // Start the Runnable immediately
+                handler.post(runnable);
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e("sync__", error.toString());
+                fetchDataLimitNetworkRequest();
+            }
+        });
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
     /**
@@ -209,24 +288,6 @@ public class ConnectivityChangeReceiver extends BroadcastReceiver {
     private String getLastActiveTime() {
         return sharedPreferences.getString("last_active_time", getCurrentTime());
     }
-
-    /**
-     * Fetch last active time in millis from SharedPreferences
-     **/
-    private long getLastActiveTimeInMillis() {
-        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault
-                ());//dd/MM/yyyy
-        long timeInMilliseconds = 0;
-        try {
-            Date mDate = sdfDate.parse(getLastActiveTime());
-            timeInMilliseconds = mDate.getTime();
-            System.out.println("Date in milli :: " + timeInMilliseconds);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        return timeInMilliseconds;
-    }
-
 
     /**
      * Method to return device IMEI. This requires explicit permissions that need to be granted from
